@@ -1,0 +1,1 @@
+# ecs-fargate-voting-app-fullstack
