@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voting App</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
   {% if session["user_id"] %}
   <section>
@@ -13,12 +15,12 @@
     <a href="/vote"><button>Go to Voting Page</button></a>
     <button onclick="logout()">Logout</button>
   </section>
-{% else %}
+  {% else %}
   <section>
     <p>You are not logged in.</p>
     <p>Please register or login below.</p>
   </section>
-{% endif %}
+  {% endif %}
 
   <h1>Welcome to the Voting App</h1>
   <p>This app lets vote on polls after logging in.</p>
@@ -35,11 +37,10 @@
     <input type="email" id="reg_email" placeholder="Email">
     <input type="password" id="reg_password" placeholder="Password">
     <button onclick="register()">Submit</button>
-  </div> 
+  </div>
 
   <script src="{{ url_for('static', filename='auth.js') }}"></script>
 
 </body>
+
 </html>
-
-
