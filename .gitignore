@@ -1,0 +1,105 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+MANIFEST
+package/
+
+# PyInstaller
+*.spec
+
+# Logs and coverage
+*.log
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.pytest_cache/
+.hypothesis/
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE settings
+.spyderproject
+.spyproject
+.ropeproject
+
+# Jupyter
+.ipynb_checkpoints
+
+# Django / Flask
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+.flaskenv
+
+# Flask instance folder (local config, DB, etc.)
+instance/
+*.db
+*.sqlite3
+
+# Sphinx
+docs/_build/
+
+# Type checkers
+.mypy_cache/
+.pytype/
+.pyre/
+
+# Ruff
+.ruff_cache/
+
+# PyCharm (optional)
+#.idea/
+
+# VS Code (optional)
+.vscode/
+
+# Terraform (if using local state)
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+*.backup
+.terraform.lock.hcl
+terraform.tfstate.backup
+terraform.tfvars
+*.auto.tfvars
+
+# AWS credentials (be cautious!)
+*.pem
+*.key
+*.crt
+.aws/
+
+# Misc
+__pypackages__/
+
+# Secrets and credentials
+.secrets
+*.secrets
+secrets/
+
+# Docker
+*.pid
+docker-compose.override.yml

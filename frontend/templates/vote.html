@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cast Your Vote</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                Logged in as: <strong>{{ session["user_email"] }}</strong>
+            </div>
+            <div>
+                <a href="/">Home</a>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+        <hr>
+    </header>
+
+    <h1>Available Polls</h1>
+
+    {% for poll in polls %}
+    <section>
+        <h2>{{ poll.question }}</h2>
+        <div id="choices-{{ poll.id }}">Loading choices...</div>
+    </section>
+    {% endfor %}
+
+    <script src="{{ url_for('static', filename='vote.js') }}"></script>
+    <script src="{{ url_for('static', filename='auth.js') }}"></script>
+
+</body>
+
+</html>
