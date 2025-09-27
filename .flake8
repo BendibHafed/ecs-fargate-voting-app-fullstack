@@ -1,0 +1,4 @@
+[flake8]
+exclude = backend/migrations
+max-line-length = 120
+ignore = E501

@@ -1,29 +1,19 @@
-from flask import Blueprint, jsonify, request, render_template, \
-                    session, redirect, url_for
+from flask import Blueprint, jsonify, request
 from backend.app import db
 from backend.app.models import Poll, Choice, User
+from .auth_utils import generate_token, verify_token
 
 bp = Blueprint("main", __name__)
 
 
 @bp.route("/healthz")
 def healthz():
-    return jsonify(status="ok")
+    return jsonify(status="ok"), 200
 
 
 @bp.route("/")
 def index():
-    return render_template("index.html")
-
-
-@bp.route("/vote")
-def vote():
-    if "user_id" not in session:
-        return redirect(url_for("main.index"))
-    user_email = session.get("user_email", "unknown")
-    polls = Poll.query.all()
-    return render_template("vote.html", polls=polls,
-                           session={"user_email": user_email})
+    return jsonify({"message": "Backend is running"}), 200
 
 
 @bp.route("/login", methods=["POST"])
@@ -31,15 +21,13 @@ def login():
     data = request.get_json()
     user = User.query.filter_by(email=data["email"]).first()
     if user and user.check_password(data["password"]):
-        session["user_id"] = user.id
-        session["user_email"] = user.email
-        return jsonify({"status": "logged_in"}), 200
+        token = generate_token(user.email)
+        return jsonify({"token": token, "email": user.email}), 200
     return jsonify({"error": "Invalid credentials"}), 401
 
 
 @bp.route("/logout", methods=["POST"])
 def logout():
-    session.clear()
     return jsonify({"status": "logged_out"}), 200
 
 
@@ -50,7 +38,7 @@ def register():
     user.set_password(data.get("password"))
     db.session.add(user)
     db.session.commit()
-    return jsonify({"status": "registered"}), 200
+    return jsonify({"email": user.email}), 200
 
 
 @bp.route("/api/polls")
@@ -69,8 +57,14 @@ def api_choices(poll_id):
 
 @bp.route("/api/polls/<int:poll_id>/vote", methods=["POST"])
 def api_vote(poll_id):
-    if "user_id" not in session:
-        return jsonify({"error": "Authentication required"}), 401
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Missing or Invalid token"}), 401
+    token = auth_header.split(" ")[1]
+    email = verify_token(token)
+    if not email:
+        return jsonify({"error": "Invalid or Expired token"}), 401
+
     data = request.get_json()
     choice_id = data.get("choice_id")
     choice = Choice.query.filter_by(id=choice_id, poll_id=poll_id).first()
@@ -78,5 +72,4 @@ def api_vote(poll_id):
         return jsonify({"error": "Invalid choice ID"}), 404
     choice.votes += 1
     db.session.commit()
-    return jsonify({"status": "ok", "choice_id": choice.id,
-                    "votes": choice.votes}), 200
+    return jsonify({"status": "ok", "choice_id": choice.id, "votes": choice.votes}), 200

@@ -11,15 +11,13 @@ class DevelopmentConfig(Config):
     DEBUG = True
     # Always use a local SQLite DB unless explicitly
     # overridden with DEV_DATABASE_URL
-    SQLALCHEMY_DATABASE_URI = os.getenv("DEV_DATABASE_URL",
-                                        "sqlite:///dev.db")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DEV_DATABASE_URL", "sqlite:///dev.db")
 
 
 class TestingConfig(Config):
     TESTING = True
     # Always in-memory DB — completely isolated
-    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL",
-                                        "sqlite:///:memory:")
+    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
 
 
 class ProductionConfig(Config):
@@ -29,5 +27,7 @@ class ProductionConfig(Config):
 
     def __init__(self):
         if not self.SQLALCHEMY_DATABASE_URI:
-            raise RuntimeError("DATABASE_URL must be set\
-                               in production environment!")
+            raise RuntimeError(
+                "DATABASE_URL must be set\
+                               in production environment!"
+            )

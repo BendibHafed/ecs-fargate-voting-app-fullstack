@@ -1,0 +1,55 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: voting-app-backend:1.0
+    container_name: voting-app-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - voting-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: voting-app-frontend:1.0
+    container_name: voting-app-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - voting-net
+
+  db:
+    image: postgres:16
+    container_name: voting-app-db
+    environment:
+      POSTGRES_DB: votingdb
+      POSTGRES_USER: votinguser
+      POSTGRES_PASSWORD: votingpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - voting-net
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+
+networks:
+  voting-net:
+    driver: bridge

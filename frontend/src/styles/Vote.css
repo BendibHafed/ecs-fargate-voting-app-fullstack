@@ -1,0 +1,39 @@
+/* Container for the vote page */
+.vote-container {
+  max-width: 800;
+  margin: auto;
+  padding: 20px;
+  font-family: sans-serif;
+}
+
+/* Header with user info and logout */
+.vote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* Poll Section Layout */
+poll-section {
+  margin-top: 30px;
+  padding: 15px;
+  background-color: #6b8526;
+  border-radius: 8px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Buttons */
+button {
+  margin: 6px 4px;
+  padding: 10px 16px;
+  background-color: #029e43;
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button:hover {
+  background-color: #123f25;
+}
