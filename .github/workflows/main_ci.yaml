@@ -83,7 +83,7 @@ jobs:
         if: ${{ env.ACT != 'true' }}
         run: docker save voting-app-frontend:act_ci -o frontend-image.tar
 
-      - name: Upload Image Artifact
+      - name: Upload Frontend Image Artifact
         if: ${{ env.ACT != 'true' }}
         uses: actions/upload-artifact@v4
         with:
@@ -123,9 +123,17 @@ jobs:
       - name: Build Docker Image
         run: docker build -t voting-app-backend:act_ci -f backend/Dockerfile ./backend
 
-      - name: Save Image as Artifact (optional)
+      - name: Save Image as Artifact
+        if: ${{ env.ACT != 'true' }}
         run: docker save voting-app-backend:act_ci -o backend-image.tar
         continue-on-error: false
+
+      - name: Upload Backend Image Artifact
+        if: ${{ env.ACT != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image
+          path: backend-image.tar
 
   validate-lint-infra:
     name: Validate & Lint Infra Code
