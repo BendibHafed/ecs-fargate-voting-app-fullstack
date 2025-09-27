@@ -99,8 +99,9 @@ jobs:
 
       - name: Save Image (Remote only)
         if: ${{ env.ACT != 'true' }}
+        run: |
           IMAGE_NAME=$(echo "${{ github.repository }}/voting-app-frontend" | tr '[:upper:]' '[:lower:]')
-        run: docker save $REGISTRY/$IMAGE_NAME:latest -o voting-app-frontend-image.tar
+          docker save $REGISTRY/$IMAGE_NAME:latest -o voting-app-frontend-image.tar
 
       - name: Upload Frontend Image Artifact
         if: ${{ env.ACT != 'true' }}
@@ -161,8 +162,9 @@ jobs:
 
       - name: Save Image as Artifact (GitHub Actions only)
         if: ${{ env.ACT != 'true' }}
+        run: |
           IMAGE_NAME=$(echo "${{ github.repository }}/voting-app-backend" | tr '[:upper:]' '[:lower:]')
-        run: docker save $REGISTRY/$IMAGE_NAME:latest -o voting-app-backend-image.tar
+          docker save $REGISTRY/$IMAGE_NAME:latest -o voting-app-backend-image.tar
 
       - name: Upload Backend Image Artifact
         if: ${{ env.ACT != 'true' }}
