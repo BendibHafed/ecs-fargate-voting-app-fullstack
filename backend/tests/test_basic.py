@@ -3,6 +3,7 @@ def test_health(client):
     assert resp.status_code == 200
     assert resp.get_json()['status'] == 'ok'
 
+
 def test_register_and_login(client):
     # Register
     r = client.post('/register', json={
@@ -17,7 +18,10 @@ def test_register_and_login(client):
         'password': 'pass123'
     })
     assert r.status_code == 200
-    assert r.get_json()['status'] == 'logged_in'
+    data = r.get_json()
+    assert "token" in data
+    assert data["email"] == "newuser@example.com"
+
 
 def test_vote_flow(client):
     # Login first
@@ -26,6 +30,8 @@ def test_vote_flow(client):
         'password': 'secret'
     })
     assert r.status_code == 200
+    token = r.get_json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
     # Get polls
     r = client.get('/api/polls')
@@ -41,7 +47,7 @@ def test_vote_flow(client):
     cid = choices[0]['id']
 
     # Vote
-    r = client.post(f'/api/polls/{pid}/vote', json={'choice_id': cid})
+    r = client.post(f'/api/polls/{pid}/vote', json={'choice_id': cid}, headers=headers)
     assert r.status_code == 200
 
     # Verify vote count

@@ -2,6 +2,7 @@ import pytest
 from backend.app import create_app, db
 from backend.app.models import Poll, Choice, User
 
+
 @pytest.fixture
 def app():
     app = create_app("testing")
@@ -26,6 +27,7 @@ def app():
 
         yield app
         db.drop_all()
+
 
 @pytest.fixture
 def client(app):

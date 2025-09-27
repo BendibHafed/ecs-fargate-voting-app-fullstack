@@ -1,4 +1,8 @@
 # Vote App - DevOps Playground
+[![CI](https://github.com/BendibHafed/ecs-fargate-voting-app-fullstack/actions/workflows/ci.yaml/badge.svg)](https://github.com/BendibHafed/ecs-fargate-voting-app-fullstack/actions/workflows/ci.yaml)
+[![CD](https://github.com/BendibHafed/ecs-fargate-voting-app-fullstack/actions/workflows/cd.yaml/badge.svg)](https://github.com/BendibHafed/ecs-fargate-voting-app-fullstack/actions/workflows/cd.yaml)
+![License](https://img.shields.io/github/license/BendibHafed/ecs-fargate-voting-app-fullstack)
+
 This project is a lightweight fullstack voting application designed as a hands-on DevOps lab. It combines a simple HTML + JavaScript frontend, a Flask backend, and a SQLite database to simulate a voting system — all deployed on AWS using ECS Fargate.
 
 The goal is not the app itself, but the infrastructure around it: containerization, CI/CD pipelines, infrastructure as code, and cloud-native deployment strategies. It’s built to demonstrate clean architecture, session-based authentication, and reproducible workflows — ideal for learners and engineers exploring modern DevOps practices.
@@ -23,9 +27,9 @@ $ cd ecs-fargate-voting-app-fullstack
 ```
 ### 2. Create virtual environment
 ```
-$ python -m venv myEnv
+$ python -m venv .myEnv
 $ source myEnv/bin/activate
-$ pip install -r .backend/requirements.txt
+$ pip install -r ./backend/requirements.txt
 ```
 ### 3. Create and Apply Migration
 Initialize the Database:
