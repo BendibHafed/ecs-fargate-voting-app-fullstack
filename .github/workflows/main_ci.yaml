@@ -6,135 +6,14 @@ on:
   workflow_dispatch:
 
 env:
+  REGISTRY: ghcr.io
   ACT: false
 
 permissions:
   contents: read
-  actions: write
+  packages: write
 
 jobs:
-  lint-backend:
-    name: Lint Backend Code
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install Flake8
-        run: pip install flake8
-      - name: Run Flake8
-        run: flake8 backend
-        continue-on-error: false
-
-  lint-frontend:
-    name: Lint Frontend Code
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "22"
-
-      - name: Clean Install
-        working-directory: frontend
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
-
-      - name: Run Lint
-        working-directory: frontend
-        run: npm run lint
-
-      - name: Upload Test Logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-logs
-          path: backend/tests/.pytest_cache
-
-  build-frontend:
-    name: Build & Package Frontend
-    runs-on: ubuntu-latest
-    needs: lint-frontend
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: "22"
-
-      - name: Inject Env Variables
-        working-directory: frontend
-        run: echo "VITE_API_URL=http://localhost:5000" > .env.production
-
-      - name: Build Frontend
-        working-directory: frontend
-        run: npm ci && npm run build
-
-      - name: Build Docker Image
-        run: docker build -t voting-app-frontend:act_ci -f frontend/Dockerfile ./frontend
-
-      - name: Save Image (Github Actions)
-        if: ${{ env.ACT != 'true' }}
-        run: docker save voting-app-frontend:act_ci -o frontend-image.tar
-
-      - name: Upload Frontend Image Artifact
-        if: ${{ env.ACT != 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-image
-          path: frontend-image.tar
-
-  test-backend:
-    name: Test Backend Code
-    runs-on: ubuntu-latest
-    needs: lint-backend
-    steps:
-      - name: Checkout Respository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-
-      - name: Run backend Tests
-        run: pytest backend/tests
-        env:
-          FLASK_CONFIG: testing
-
-  build-backend:
-    name: Build Backend Docker Image
-    runs-on: ubuntu-latest
-    needs: [lint-backend, test-backend]
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build Docker Image
-        run: docker build -t voting-app-backend:act_ci -f backend/Dockerfile ./backend
-
-      - name: Save Image as Artifact
-        if: ${{ env.ACT != 'true' }}
-        run: docker save voting-app-backend:act_ci -o backend-image.tar
-        continue-on-error: false
-
-      - name: Upload Backend Image Artifact
-        if: ${{ env.ACT != 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-image
-          path: backend-image.tar
-
   validate-lint-infra:
     name: Validate & Lint Infra Code
     runs-on: ubuntu-latest
@@ -180,3 +59,150 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  lint-backend:
+    name: Lint Backend Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Flake8
+        run: pip install flake8
+      - name: Run Flake8
+        run: flake8 backend
+        continue-on-error: false
+
+  lint-frontend:
+    name: Lint Frontend Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+
+      - name: Clean Install
+        working-directory: frontend
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Run Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Upload Test Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-logs
+          path: backend/tests/.pytest_cache
+
+  build-frontend:
+    name: Build & Package Frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, validate-lint-infra]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+
+      - name: Inject Env Variables
+        working-directory: frontend
+        run: echo "VITE_API_URL=http://localhost:5000" > .env.production
+
+      - name: Build Frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Build and Push Frontend Docker Image
+        run: |
+          if [ "$ACT" = "true" ]; then
+            docker build -t voting-app-frontend:act_ci -f frontend/Dockerfile ./frontend
+          else
+            IMAGE_NAME=$(echo "${{ github.repository }}/voting-app" | tr '[:upper:]' '[:lower:]')
+            docker build -t $REGISTRY/$IMAGE_NAME:latest -f frontend/Dockerfile ./frontend
+            docker tag $REGISTRY/$IMAGE_NAME:latest $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+            docker push $REGISTRY/$IMAGE_NAME:latest
+            docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          fi
+
+      - name: Save Image (Remote only)
+        if: ${{ env.ACT != 'true' }}
+        run: docker save ghcr.io/${{ github.repository }}/frontend:latest -o frontend-image.tar
+
+      - name: Upload Frontend Image Artifact
+        if: ${{ env.ACT != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: frontend-image.tar
+
+  test-backend:
+    name: Test Backend Code
+    runs-on: ubuntu-latest
+    needs: lint-backend
+    steps:
+      - name: Checkout Respository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run backend Tests
+        run: pytest backend/tests
+        env:
+          FLASK_CONFIG: testing
+
+  build-backend:
+    name: Build Backend Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint-backend, validate-lint-infra, test-backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in GHCR (Remote Only)
+        if: ${{ env.ACT != true }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Docker Image
+        run: |
+          if [ "$ACT" = "true" ]; then
+            docker build -t voting-app-backend:act_ci -f backend/Dockerfile ./backend
+          else
+            IMAGE_NAME=$(echo "${{ github.repository }}/voting-app" | tr '[:upper:]' '[:lower:]')
+            docker build -t $REGISTRY/$IMAGE_NAME:latest -f backend/Dockerfile ./backend
+            docker tag $REGISTRY/$IMAGE_NAME:latest $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+            docker push $REGISTRY/$IMAGE_NAME:latest
+            docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          fi
+
+      - name: Save Image as Artifact (GitHub Actions only)
+        if: ${{ env.ACT != 'true' }}
+        run: docker save ghcr.io/${{ github.repository }}/backend:latest -o backend-image.tar
+
+      - name: Upload Backend Image Artifact
+        if: ${{ env.ACT != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image
+          path: backend-image.tar
