@@ -137,7 +137,7 @@ jobs:
 
       - name: Save Image (Remote only)
         if: ${{ env.ACT != 'true' }}
-        run: docker save ghcr.io/${{ github.repository }}/frontend:latest -o frontend-image.tar
+        run: docker save $REGISTRY/$IMAGE_NAME:latest -o frontend-image.tar
 
       - name: Upload Frontend Image Artifact
         if: ${{ env.ACT != 'true' }}
@@ -198,7 +198,7 @@ jobs:
 
       - name: Save Image as Artifact (GitHub Actions only)
         if: ${{ env.ACT != 'true' }}
-        run: docker save ghcr.io/${{ github.repository }}/backend:latest -o backend-image.tar
+        run: docker save $REGISTRY/$IMAGE_NAME:latest -o backend-image.tar
 
       - name: Upload Backend Image Artifact
         if: ${{ env.ACT != 'true' }}
