@@ -14,52 +14,6 @@ permissions:
   packages: write
 
 jobs:
-  validate-lint-infra:
-    name: Validate & Lint Infra Code
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.13.0"
-
-      - name: Setup Terraform Plugin Cache
-        working-directory: infra/terraform
-        run: |
-          mkdir -p ~/.terraform.d/plugin-cache
-          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
-
-      - name: Install Linting Tools
-        run: curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
-
-      - name: Terraform Lint
-        run: |
-          tflint --init
-          tflint --chdir=infra/terraform --force
-
-      - name: Terraform Format check
-        working-directory: infra/terraform
-        continue-on-error: true
-        run: terraform fmt -recursive -check
-
-      - name: Terraform Init & Validate (Local or Remote)
-        working-directory: infra/terraform
-        run: |
-          rm -rf .terraform/
-          if [ "$ACT" = "true" ]; then
-            echo "Running Terraform in local mode"
-            terraform init -backend=false -input=false -no-color
-          else
-            echo "Running Terraform with backend"
-             terraform init -input=false -no-color
-          fi
-          terraform validate -no-color
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
   lint-backend:
     name: Lint Backend Code
     runs-on: ubuntu-latest
@@ -128,7 +82,7 @@ jobs:
           if [ "$ACT" = "true" ]; then
             docker build -t voting-app-frontend:act_ci -f frontend/Dockerfile ./frontend
           else
-            IMAGE_NAME=$(echo "${{ github.repository }}/voting-app" | tr '[:upper:]' '[:lower:]')
+            IMAGE_NAME=$(echo "${{ github.repository }}/voting-app-frontend" | tr '[:upper:]' '[:lower:]')
             docker build -t $REGISTRY/$IMAGE_NAME:latest -f frontend/Dockerfile ./frontend
             docker tag $REGISTRY/$IMAGE_NAME:latest $REGISTRY/$IMAGE_NAME:${{ github.sha }}
             docker push $REGISTRY/$IMAGE_NAME:latest
@@ -137,7 +91,7 @@ jobs:
 
       - name: Save Image (Remote only)
         if: ${{ env.ACT != 'true' }}
-        run: docker save $REGISTRY/$IMAGE_NAME:latest -o frontend-image.tar
+        run: docker save ghcr.io/${{ github.repository }}/frontend:latest -o frontend-image.tar
 
       - name: Upload Frontend Image Artifact
         if: ${{ env.ACT != 'true' }}
@@ -189,7 +143,7 @@ jobs:
           if [ "$ACT" = "true" ]; then
             docker build -t voting-app-backend:act_ci -f backend/Dockerfile ./backend
           else
-            IMAGE_NAME=$(echo "${{ github.repository }}/voting-app" | tr '[:upper:]' '[:lower:]')
+            IMAGE_NAME=$(echo "${{ github.repository }}/voting-app-backend" | tr '[:upper:]' '[:lower:]')
             docker build -t $REGISTRY/$IMAGE_NAME:latest -f backend/Dockerfile ./backend
             docker tag $REGISTRY/$IMAGE_NAME:latest $REGISTRY/$IMAGE_NAME:${{ github.sha }}
             docker push $REGISTRY/$IMAGE_NAME:latest
@@ -198,7 +152,7 @@ jobs:
 
       - name: Save Image as Artifact (GitHub Actions only)
         if: ${{ env.ACT != 'true' }}
-        run: docker save $REGISTRY/$IMAGE_NAME:latest -o backend-image.tar
+        run: docker save ghcr.io/${{ github.repository }}/backend:latest -o backend-image.tar
 
       - name: Upload Backend Image Artifact
         if: ${{ env.ACT != 'true' }}
@@ -206,3 +160,49 @@ jobs:
         with:
           name: backend-image
           path: backend-image.tar
+
+  validate-lint-infra:
+    name: Validate & Lint Infra Code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.0"
+
+      - name: Setup Terraform Plugin Cache
+        working-directory: infra/terraform
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
+      - name: Install Linting Tools
+        run: curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+      - name: Terraform Lint
+        run: |
+          tflint --init
+          tflint --chdir=infra/terraform --force
+
+      - name: Terraform Format check
+        working-directory: infra/terraform
+        continue-on-error: true
+        run: terraform fmt -recursive -check
+
+      - name: Terraform Init & Validate (Local or Remote)
+        working-directory: infra/terraform
+        run: |
+          rm -rf .terraform/
+          if [ "$ACT" = "true" ]; then
+            echo "Running Terraform in local mode"
+            terraform init -backend=false -input=false -no-color
+          else
+            echo "Running Terraform with backend"
+             terraform init -input=false -no-color
+          fi
+          terraform validate -no-color
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
