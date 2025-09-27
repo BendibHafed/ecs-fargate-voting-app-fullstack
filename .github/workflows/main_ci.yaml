@@ -77,6 +77,14 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run build
 
+      - name: Log in GHCR (Remote Only)
+        if: ${{ env.ACT != true }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and Push Frontend Docker Image
         run: |
           if [ "$ACT" = "true" ]; then
