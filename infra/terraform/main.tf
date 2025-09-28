@@ -4,6 +4,7 @@ locals {
 
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
+  version = "~> 6.0"
 
   name = "voting-app-vpc"
   cidr = local.vpc_cidr
@@ -72,7 +73,7 @@ resource "aws_ecs_cluster" "voting" {
 
 resource "aws_iam_role" "ecs_execution" {
   name = "ecs-execution-role"
-  assume_role_policy = jsondecode({
+  assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
@@ -92,7 +93,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_logs" {
 resource "aws_iam_role" "ecs_task" {
   name = "ecs-task-role"
 
-  assume_role_policy = jsondecode({
+  assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
@@ -114,7 +115,7 @@ resource "aws_ecs_task_definition" "backend" {
   execution_role_arn = aws_iam_role.ecs_execution.arn
   task_role_arn      = aws_iam_role.ecs_task.arn
 
-  container_definitions = jsondecode([
+  container_definitions = jsonencode([
     {
       name  = "backend"
       image = "ghcr.io/${var.github_repo}/voting-app-backend:${var.image_tag}"

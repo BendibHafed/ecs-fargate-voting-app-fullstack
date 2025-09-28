@@ -24,7 +24,7 @@ variable "db_name" {
   description = "Database name string"
 }
 
-variable "db_user" {
+variable "db_username" {
   type        = string
   description = "Database username string"
 }

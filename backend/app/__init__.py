@@ -18,7 +18,7 @@ def create_app(config_name=None):
     template_folder = os.path.join(base_dir, "frontend", "templates")
     static_folder = os.path.join(base_dir, "frontend", "static")
     app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
-    app.secret_key = os.getenv("SECRET_KEY", "dev-secret")
+    app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret")
     if not config_name:
         config_name = os.getenv("FLASK_CONFIG", "DevelopmentConfig")
 
