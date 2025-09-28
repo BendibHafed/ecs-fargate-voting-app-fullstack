@@ -35,7 +35,12 @@ jobs:
       - name: Initialize Terraform
         working-directory: infra/terraform
         run: |
-          terraform init -reconfigure -input=false -no-color \
+          terraform init -reconfigure -input=false -no-color
+
+      - name: Generate Destroy Plan
+        working-directory: infra/terraform
+        run: |
+          terraform plan -destroy -input=false -no-color -lock=false
           -var="github_repo=${{ env.github_repo }}" \
           -var="image_tag=${{ env.image_tag }}" \
           -var="database_url=${{ secrets.DATABASE_URL }}" \
@@ -43,10 +48,6 @@ jobs:
           -var="db_username=${{ secrets.DB_USERNAME }}" \
           -var="db_password=${{ secrets.DB_PASSWORD }}" \
           -var="flask_secret_key=${{ secrets.FLASK_SECRET_KEY }}"
-
-      - name: Generate Destroy Plan
-        working-directory: infra/terraform
-        run: terraform plan -destroy -input=false -no-color -lock=false
 
       - name: Final Confirmation Delay
         run: |
