@@ -143,3 +143,61 @@ resource "aws_ecs_task_definition" "backend" {
     }
   ])
 }
+
+resource "aws_ecs_service" "backend" {
+  name = "voting-backend-service"
+  cluster = aws_ecs_cluster.voting.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  launch_type = "FARGATE"
+  desired_count = 1
+
+  network_configuration {
+    subnets = module.vpc.private_subnets
+    security_groups = [module.security_group.security_group_id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name = "backend"
+    container_port = 5000
+  }
+
+  depends_on = [ aws_lb_listener.backend ]
+
+}
+
+resource "aws_lb" "backend" {
+  name = "voting-backend-alb"
+  internal = false
+  load_balancer_type = "application"
+  subnets = module.vpc.public_subnets
+  security_groups = [module.security_group.security_group_id]
+}
+
+resource "aws_lb_target_group" "backend" {
+  name = "voting-backend-tg"
+  port = 5000
+  protocol = "HTTP"
+  vpc_id = module.vpc.vpc_id
+  target_type = "ip"
+  health_check {
+    path = "/healthz"
+    interval = 30
+    timeout = 5
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+    matcher = "200"
+  }
+}
+
+resource "aws_lb_listener" "backend" {
+  load_balancer_arn = aws_lb.backend.arn
+  port = 80
+  protocol = "HTTP"
+
+  default_action {
+    type = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+}
