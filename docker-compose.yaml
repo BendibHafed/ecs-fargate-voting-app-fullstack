@@ -12,12 +12,15 @@ services:
       retries: 3
     ports:
       - "5000:5000"
-    env_file:
-      - .env
     depends_on:
       - db
     networks:
       - voting-net
+    environment:
+      - FLASK_CONFIG=ProductionConfig
+      - DATABASE_URL=postgresql://votinguser:votingpass@voting-app-db:5432/votingdb
+      - SECRET_KEY=super-secret
+      - FLASK_DEBUG=1
 
   frontend:
     build:
