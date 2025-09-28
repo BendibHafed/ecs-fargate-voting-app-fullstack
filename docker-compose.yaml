@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: voting-app-backend:1.0
+    image: voting-app-backend:act_ci
     container_name: voting-app-backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
@@ -12,18 +12,21 @@ services:
       retries: 3
     ports:
       - "5000:5000"
-    env_file:
-      - .env
     depends_on:
       - db
     networks:
       - voting-net
+    environment:
+      - FLASK_CONFIG=ProductionConfig
+      - DATABASE_URL=postgresql://votinguser:votingpass@voting-app-db:5432/votingdb
+      - SECRET_KEY=super-secret
+      - FLASK_DEBUG=1
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: voting-app-frontend:1.0
+    image: voting-app-frontend:act_ci
     container_name: voting-app-frontend
     ports:
       - "3000:80"
