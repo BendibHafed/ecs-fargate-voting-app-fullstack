@@ -65,6 +65,8 @@ module "db" {
   publicly_accessible    = false
   subnet_ids             = module.vpc.private_subnets
   vpc_security_group_ids = [module.security_group.security_group_id]
+  create_db_subnet_group = true
+  db_subnet_group_name   = "voting-app-db-subnet-group"
 }
 
 resource "aws_ecs_cluster" "voting" {
