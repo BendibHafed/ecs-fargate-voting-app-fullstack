@@ -7,6 +7,9 @@ on:
         description: "Type 'Destroy-prod' to confirm"
         required: true
         default: "Cancel"
+env:
+  github_repo: bendibhafed/ecs-fargate-voting-app-fullstack
+  image_tag: ${{ github.sha }}
 
 jobs:
   destroy:
@@ -31,7 +34,15 @@ jobs:
 
       - name: Initialize Terraform
         working-directory: infra/terraform
-        run: terraform init -reconfigure -input=false -no-color
+        run: |
+          terraform init -reconfigure -input=false -no-color \
+          -var="github_repo=${{ env.github_repo }}" \
+          -var="image_tag=${{ env.image_tag }}" \
+          -var="database_url=${{ secrets.DATABASE_URL }}" \
+          -var="db_name=${{ secrets.DB_NAME }}" \
+          -var="db_username=${{ secrets.DB_USERNAME }}" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}" \
+          -var="flask_secret_key=${{ secrets.FLASK_SECRET_KEY }}"
 
       - name: Generate Destroy Plan
         working-directory: infra/terraform
