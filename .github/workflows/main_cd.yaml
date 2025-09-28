@@ -161,6 +161,8 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform plan -input=false -no-color -out=tfplan \
+            -var="github_repo=${{ env.github_repo }}" \
+            -var="image_tag=${{ env.image_tag }}" \
             -var="database_url=${{ secrets.DATABASE_URL }}" \
             -var="db_name=${{ secrets.DB_NAME }}" \
             -var="db_username=${{ secrets.DB_USERNAME }}" \
@@ -172,5 +174,11 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' && env.ACT != 'true' }}
         run: |
           terraform apply -input=false -auto-approve -no-color \
+            -var="github_repo=${{ env.github_repo }}" \
+            -var="image_tag=${{ env.image_tag }}" \
+            -var="database_url=${{ secrets.DATABASE_URL }}" \
+            -var="db_name=${{ secrets.DB_NAME }}" \
+            -var="db_username=${{ secrets.DB_USERNAME }}" \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
+            -var="flask_secret_key=${{ secrets.FLASK_SECRET_KEY }}"
             tfplan
