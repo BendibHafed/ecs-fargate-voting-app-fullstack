@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: voting-app-backend:1.0
+    image: voting-app-backend:act_ci
     container_name: voting-app-backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
@@ -23,7 +23,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: voting-app-frontend:1.0
+    image: voting-app-frontend:act_ci
     container_name: voting-app-frontend
     ports:
       - "3000:80"

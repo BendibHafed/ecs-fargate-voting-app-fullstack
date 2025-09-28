@@ -1,0 +1,50 @@
+name: CD - controlled Deployment
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  ACT: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Debug ACT Mode
+        run: |
+          if [ "$ACT" = "true" ]; then
+            echo " ACT mode detected — running locally"
+          else
+            echo " GitHub Actions mode — deploying remotely"
+          fi
+
+      - name: Install Docker Compose (ACT only)
+        if: ${{ env.ACT == 'true' }}
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: Run with Docker Compose
+        if: ${{ env.ACT == 'true' }}
+        run: |
+          docker compose -f docker-compose.yaml up --build -d
+          echo "Waiting for the App to be ready..."
+          for i in {1..20}; do
+            if curl -fs http://localhost:5000/healthz; then
+              echo "App is healthy!"
+              break
+            fi
+            sleep 3
+          done
