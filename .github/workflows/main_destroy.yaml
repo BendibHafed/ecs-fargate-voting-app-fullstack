@@ -40,7 +40,7 @@ jobs:
       - name: Generate Destroy Plan
         working-directory: infra/terraform
         run: |
-          terraform plan -destroy -input=false -no-color -lock=false \
+          terraform destroy -auto-approve -input=false -no-color -lock=false \
             -var="github_repo=${{ env.github_repo }}" \
             -var="image_tag=${{ env.image_tag }}" \
             -var="database_url=${{ secrets.DATABASE_URL }}" \
