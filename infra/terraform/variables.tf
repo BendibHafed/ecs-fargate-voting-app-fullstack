@@ -36,5 +36,6 @@ variable "db_password" {
 
 variable "flask_secret_key" {
   type        = string
+  default = "default"
   description = "Flask secret key"
 }
