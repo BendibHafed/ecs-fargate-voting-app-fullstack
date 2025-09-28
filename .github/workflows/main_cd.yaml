@@ -137,7 +137,7 @@ jobs:
         with:
           terraform_version: "1.13.0"
 
-      - name: Terraform Init (Local State)
+      - name: Terraform Init (ACT only)
         if: ${{ env.ACT == 'true' }}
         working-directory: infra/terraform
         run: |
@@ -151,7 +151,7 @@ jobs:
           EOF
           terraform init -reconfigure -input=false -no-color
 
-      - name: Terraform Init (AWS)
+      - name: Terraform Init
         if: ${{ env.ACT != 'true' }}
         working-directory: infra/terraform
         run: terraform init -reconfigure -input=false
