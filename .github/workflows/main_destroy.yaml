@@ -58,7 +58,7 @@ jobs:
       - name: Backup Terraform State
         run: |
           echo "Creating State Backup Before cleanup..."
-          aws s3 cp s3://ecs-fargate-voting-app-state-bucket/ecs-fargate-voting-app/terraform.tfstate \
+          aws s3 cp s3://ecs-fargate-voting-app-state-bucket/ecs-fargate-voting-app/terraform-tfstate \
             s3://ecs-fargate-voting-app-state-bucket/backups/ecs-fargate-voting-app/terraform.tfstate.$(date +%Y%m%d-%H%M%S).backup
 
       - name: Infrastructure Destruction
