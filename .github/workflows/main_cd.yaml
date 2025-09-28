@@ -4,9 +4,15 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
-
+    inputs:
+      approve_deployment:
+        description: "Approve and continue deployment?"
+        required: true
+        default: "yes"
 env:
   ACT: false
+  github_repo: bendibhafed/ecs-fargate-voting-app-fullstack
+  image_tag: ${{ github.sha }}
 
 permissions:
   contents: read
@@ -15,7 +21,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Code
@@ -155,8 +161,11 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform plan -input=false -no-color -out=tfplan \
+            -var="database_url=${{ secrets.DATABASE_URL }}" \
+            -var="db_name=${{ secrets.DB_NAME }}" \
+            -var="db_username=${{ secrets.DB_USERNAME }}" \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
-            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}"
+            -var="flask_secret_key=${{ secrets.FLASK_SECRET_KEY }}"
 
       - name: Apply Terraform Changes
         working-directory: infra/terraform
@@ -164,4 +173,4 @@ jobs:
         run: |
           terraform apply -input=false -auto-approve -no-color \
             -var="db_password=${{ secrets.DB_PASSWORD }}" \
-            -var="ssh_public_key=${{ secrets.SSH_PUBLIC_KEY }}" tfplan
+            tfplan
