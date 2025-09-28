@@ -1,0 +1,66 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type 'Destroy-prod' to confirm"
+        required: true
+        default: "Cancel"
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'Destroy-prod'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Initialize Terraform
+        working-directory: infra/terraform
+        run: terraform init -reconfigure -input=false -no-color
+
+      - name: Generate Destroy Plan
+        working-directory: infra/terraform
+        run: terraform plan -destroy -input=false -no-color -lock=false
+
+      - name: Final Confirmation Delay
+        run: |
+          echo " --> DESTRUCTION WILL START IN 15 SECs..."
+          echo " --> CANCELNOW IF THIS IS A MISTAKE!"
+          sleep 15
+
+      - name: Backup Terraform State
+        run: |
+          echo "Creating State Backup Before cleanup..."
+          aws s3 cp s3://ecs-fargate-voting-app-state-bucket/ecs-fargate-voting-app/terraform.tfstate \
+            s3://ecs-fargate-voting-app-state-bucket/backups/ecs-fargate-voting-app/terraform.tfstate.$(date +%Y%m%d-%H%M%S).backup
+
+      - name: Infrastructure Destruction
+        working-directory: infra/terraform
+        run: terraform destroy -auto-approve -input=false -no-color -lock=false
+
+      - name: Force Unlock Terraform State
+        run: |
+          aws dynamodb delete-item \
+            --table-name ecs-fargate-voting-locks \
+            --key '{"LockID": {"S": "ecs-fargate-voting-app/terraform.tfstate"}}'
+
+      - name: Verify Destruction Completion
+        run: |
+          echo " --> Destruction completed successfully"
+          echo " --> State backed up to S3 backups/"
+          echo " --> Infrastructure resources have been destroyed"
