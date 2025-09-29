@@ -24,7 +24,7 @@ module "vpc" {
   }
 }
 
-module "security_group" {
+module "db_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 5.0"
 
@@ -64,7 +64,7 @@ module "db" {
   port                   = 5432
   publicly_accessible    = false
   subnet_ids             = module.vpc.private_subnets
-  vpc_security_group_ids = [module.security_group.security_group_id]
+  vpc_security_group_ids = [module.db_sg.security_group_id]
   create_db_subnet_group = true
   db_subnet_group_name   = "voting-app-db-subnet-group"
 }
@@ -146,6 +146,33 @@ resource "aws_ecs_task_definition" "backend" {
   ])
 }
 
+module "ecs_sg" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 5.0"
+
+  name   = "voting-ecs-sg"
+  vpc_id = module.vpc.vpc_id
+
+  ingress_with_source_security_group_id = [
+    {
+      from_port                = 5000
+      to_port                  = 5000
+      protocol                 = "tcp"
+      description              = "App traffic from ALB"
+      source_security_group_id = module.alb_sg.security_group_id
+    }
+  ]
+
+  egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+}
+
 resource "aws_ecs_service" "backend" {
   name = "voting-backend-service"
   cluster = aws_ecs_cluster.voting.id
@@ -155,7 +182,7 @@ resource "aws_ecs_service" "backend" {
 
   network_configuration {
     subnets = module.vpc.private_subnets
-    security_groups = [module.security_group.security_group_id]
+    security_groups = [module.ecs_sg.security_group_id]
     assign_public_ip = false
   }
 
@@ -169,12 +196,39 @@ resource "aws_ecs_service" "backend" {
 
 }
 
+module "alb_sg" {
+  source  = "terraform-aws-modules/security-group/aws"
+  version = "~> 5.0"
+
+  name   = "voting-alb-sg"
+  vpc_id = module.vpc.vpc_id
+
+  ingress_with_cidr_blocks = [
+    {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      description = "Allow HTTP from anywhere"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+
+  egress_with_cidr_blocks = [
+    {
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+}
+
 resource "aws_lb" "backend" {
   name = "voting-backend-alb"
   internal = false
   load_balancer_type = "application"
   subnets = module.vpc.public_subnets
-  security_groups = [module.security_group.security_group_id]
+  security_groups = [module.alb_sg.security_group_id]
 }
 
 resource "aws_lb_target_group" "backend" {
