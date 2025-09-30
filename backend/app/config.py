@@ -2,7 +2,7 @@ import os
 
 
 class Config:
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+    SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret")
     SESSION_COOKIE_HTTPONLY = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

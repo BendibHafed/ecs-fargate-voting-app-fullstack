@@ -1,42 +1,70 @@
-locals {
-  vpc_cidr = "10.0.0.0/16"
-}
+
+##################################################
+# 1. VPC
+##################################################
 
 module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
+  source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.0"
 
-  name = "voting-app-vpc"
+  name = local.vpc_name
   cidr = local.vpc_cidr
 
-  azs             = data.aws_availability_zones.available.names
-  private_subnets = [for i, az in data.aws_availability_zones.available.names : cidrsubnet(local.vpc_cidr, 8, i)]
-  public_subnets  = [for i, az in data.aws_availability_zones.available.names : cidrsubnet(local.vpc_cidr, 8, i + 100)]
-
+  azs             = local.azs
+  private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
+  public_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
 
   enable_nat_gateway = true
-  enable_vpn_gateway = true
+  single_nat_gateway = true
 
   tags = {
     Terraform   = "true"
     Environment = "prod"
-    Project     = "ECS-Fargate-Voting-App"
+    Project     = "ECS-Fargate-Voting-App-FullStack"
   }
 }
 
+##################################################
+# 2. RDS
+##################################################
+
+module "db" {
+  source                 = "terraform-aws-modules/rds/aws"
+  version                = "~> 6.0"
+  identifier             = "voting-app-db"
+  engine                 = "postgres"
+  engine_version         = "16"
+  family                 = "postgres16"
+  instance_class         = "db.t3.micro"
+  allocated_storage      = local.db_allocated_storage
+  db_name                = var.db_name
+  username               = var.db_username
+  password               = var.db_password
+  port                   = local.db_postgres_port
+  publicly_accessible    = false
+  subnet_ids             = module.vpc.private_subnets
+  vpc_security_group_ids = [module.db_sg.security_group_id]
+  create_db_subnet_group = true
+  db_subnet_group_name   = "voting-app-db-subnet-group"
+}
+
+##################################################
+# 3. Security Groups
+##################################################
+
+# DB Security Group
 module "db_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 5.0"
 
   name        = "voting-db-sg"
-  description = "Complete PostgreSQL example security group"
+  description = "PostgreSQL DB instance security group"
   vpc_id      = module.vpc.vpc_id
 
-  # ingress
   ingress_with_cidr_blocks = [
     {
-      from_port   = 5432
-      to_port     = 5432
+      from_port   = local.db_postgres_port
+      to_port     = local.db_postgres_port
       protocol    = "tcp"
       description = "PostgreSQL access from within VPC"
       cidr_blocks = module.vpc.vpc_cidr_block
@@ -48,154 +76,7 @@ module "db_sg" {
   }
 }
 
-
-module "db" {
-  source                 = "terraform-aws-modules/rds/aws"
-  version                = "~> 6.0"
-  identifier             = "voting-app-db"
-  engine                 = "postgres"
-  engine_version         = "16"
-  family                 = "postgres16"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 20
-  db_name                = var.db_name
-  username               = var.db_username
-  password               = var.db_password
-  port                   = 5432
-  publicly_accessible    = false
-  subnet_ids             = module.vpc.private_subnets
-  vpc_security_group_ids = [module.db_sg.security_group_id]
-  create_db_subnet_group = true
-  db_subnet_group_name   = "voting-app-db-subnet-group"
-}
-
-resource "aws_ecs_cluster" "voting" {
-  name = "voting-app-cluster"
-}
-
-resource "aws_iam_role" "ecs_execution" {
-  name = "ecs-execution-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_execution_logs" {
-  role       = aws_iam_role.ecs_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role" "ecs_task" {
-  name = "ecs-task-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "voting-app-backend"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-
-  execution_role_arn = aws_iam_role.ecs_execution.arn
-  task_role_arn      = aws_iam_role.ecs_task.arn
-
-  container_definitions = jsonencode([
-    {
-      name  = "backend"
-      image = "ghcr.io/${var.github_repo}/voting-app-backend:${var.image_tag}"
-      portMappings = [
-        {
-          containerPort = 5000
-          hostPort      = 5000
-          protocol      = "tcp"
-        }
-      ]
-      environment = [
-        { name = "FLASK_CONFIG", value = "ProductionConfig" },
-        { name = "DATABASE_URL", value = var.database_url },
-        { name = "FLASK_SECRET_KEY", value = var.flask_secret_key },
-        { name = "FLASK_DEBUG", value = "1" }
-      ]
-      logConfiguration = {
-        LogDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/voting-app-backend"
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
-module "ecs_sg" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 5.0"
-
-  name   = "voting-ecs-sg"
-  vpc_id = module.vpc.vpc_id
-
-  ingress_with_source_security_group_id = [
-    {
-      from_port                = 5000
-      to_port                  = 5000
-      protocol                 = "tcp"
-      description              = "App traffic from ALB"
-      source_security_group_id = module.alb_sg.security_group_id
-    }
-  ]
-
-  egress_with_cidr_blocks = [
-    {
-      from_port   = 0
-      to_port     = 0
-      protocol    = "-1"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
-}
-
-resource "aws_ecs_service" "backend" {
-  name = "voting-backend-service"
-  cluster = aws_ecs_cluster.voting.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  launch_type = "FARGATE"
-  desired_count = 1
-
-  network_configuration {
-    subnets = module.vpc.private_subnets
-    security_groups = [module.ecs_sg.security_group_id]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
-    container_name = "backend"
-    container_port = 5000
-  }
-
-  depends_on = [ aws_lb_listener.backend ]
-
-}
-
+# ALB Security Group
 module "alb_sg" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 5.0"
@@ -221,39 +102,145 @@ module "alb_sg" {
       cidr_blocks = "0.0.0.0/0"
     }
   ]
+  tags = {
+    Name = "Application-Load-Balancer-security-group"
+  }
 }
 
-resource "aws_lb" "backend" {
-  name = "voting-backend-alb"
-  internal = false
-  load_balancer_type = "application"
-  subnets = module.vpc.public_subnets
-  security_groups = [module.alb_sg.security_group_id]
-}
+##################################################
+# 4. Target Group & Listener for ALB 
+##################################################
 
 resource "aws_lb_target_group" "backend" {
-  name = "voting-backend-tg"
-  port = 5000
-  protocol = "HTTP"
-  vpc_id = module.vpc.vpc_id
+  name        = "voting-backend-tg"
+  port        = local.backend_container_port
+  protocol    = "HTTP"
+  vpc_id      = module.vpc.vpc_id
   target_type = "ip"
+
   health_check {
-    path = "/healthz"
-    interval = 30
-    timeout = 5
-    healthy_threshold = 2
+    path                = "/healthz"
+    matcher             = "200-399"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
     unhealthy_threshold = 2
-    matcher = "200"
   }
 }
 
 resource "aws_lb_listener" "backend" {
   load_balancer_arn = aws_lb.backend.arn
-  port = 80
-  protocol = "HTTP"
+  port              = 80
+  protocol          = "HTTP"
 
   default_action {
-    type = "forward"
+    type             = "forward"
     target_group_arn = aws_lb_target_group.backend.arn
   }
 }
+
+##################################################
+# 5. ALB (Application Load Balancer)
+##################################################
+
+resource "aws_lb" "backend" {
+  name               = "voting-backend-alb"
+  internal           = false
+  load_balancer_type = "application"
+  subnets            = module.vpc.public_subnets
+  security_groups    = [module.alb_sg.security_group_id]
+}
+
+##################################################
+# 6. ECS (Module-based)
+##################################################
+
+module "ecs" {
+  source = "terraform-aws-modules/ecs/aws"
+
+  cluster_name = "voting-app-cluster"
+
+  cluster_configuration = {
+    execute_command_configuration = {
+      logging = "OVERRIDE"
+      log_configuration = {
+        cloud_watch_log_group_name = "/aws/ecs/aws-ec2"
+      }
+    }
+  }
+
+  default_capacity_provider_strategy = {
+    FARGATE = {
+      weight = 1
+      base   = 1
+    }
+  }
+
+  services = {
+    voting-backend = {
+      cpu    = 256
+      memory = 512
+
+      container_definitions = {
+        backend = {
+          cpu       = 256
+          memory    = 512
+          essential = true
+          image     = "ghcr.io/${var.github_repo}/voting-app-backend:${var.image_tag}"
+          portMappings = [
+            {
+              name          = local.backend_container_name
+              containerPort = local.backend_container_port
+              protocol      = "tcp"
+            }
+          ]
+          environment = [
+            { name = "FLASK_CONFIG", value = "ProductionConfig" },
+            { name = "DATABASE_URL", value = var.database_url },
+            { name = "FLASK_SECRET_KEY", value = var.flask_secret_key },
+            { name = "FLASK_DEBUG", value = "0" }
+          ]
+
+          enable_cloudwatch_logging = true
+        }
+      }
+
+      load_balancer = {
+        service = {
+          target_group_arn = aws_lb_target_group.backend.arn
+          container_name   = local.backend_container_name
+          container_port   = local.backend_container_port
+        }
+      }
+
+      subnet_ids = module.vpc.private_subnets
+
+      security_group_ingress_rules = {
+        alb_http = {
+          description                  = "Allow ALB to reach ECS tasks"
+          from_port                    = local.backend_container_port
+          to_port                      = local.backend_container_port
+          ip_protocol                  = "tcp"
+          referenced_security_group_id = module.alb_sg.security_group_id
+        }
+      }
+      security_group_egress_rules = {
+        all = {
+          ip_protocol = "-1"
+          cidr_ipv4   = "0.0.0.0/0"
+        }
+      }
+    }
+  }
+
+  tags = {
+    Environment = "prod"
+    Project     = "ECS-Fargate-Voting-App-FullStack"
+  }
+}
+
+
+
+
+
+
