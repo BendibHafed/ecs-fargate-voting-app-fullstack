@@ -58,7 +58,7 @@ module "db_sg" {
   version = "~> 5.0"
 
   name        = "voting-db-sg"
-  description = "PostgreSQL DB instance security group"
+  description = "PostgreSQL DB security group"
   vpc_id      = module.vpc.vpc_id
 
   ingress_with_cidr_blocks = [
